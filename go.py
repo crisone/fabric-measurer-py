@@ -6,7 +6,8 @@ from datetime import datetime
 from terminaltables import AsciiTable
 from mock_sender import SERIAL_PORT
 
-from protocol import Communicator
+# from protocol import Communicator
+from protocol_simple import Communicator
 
 
 def read_config():
@@ -18,7 +19,7 @@ def read_config():
         serial_port = cfg["serial_port"]
         baudrate = cfg["baudrate"]
     except:
-        raise
+        pass
 
     s = input("请输入串口设备号({}):".format(serial_port))
     if s:
@@ -55,7 +56,11 @@ def do_recv():
                 )
 
             table = AsciiTable(tdata)
-            os.system("clear")
+            if os.name == "nt":
+                os.system("cls")
+            else:
+                os.system("clear")
+            print(c.get_stats())
             print(table.table)
             f.write(",".join([str(d) for d in ts]))
             f.write("\n")

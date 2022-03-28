@@ -3,6 +3,7 @@ import json
 from struct import pack, unpack
 from datetime import datetime
 import serial
+import time
 
 from terminaltables import AsciiTable
 from mock_sender import SERIAL_PORT
@@ -74,7 +75,7 @@ def decode_buf(data):
 
         v = data['buf'][i:i + 2]
         channel = v[0] >> 4
-        val = (v[0] & 0x0F) * 256 + v[1] 
+        val = (v[0] & 0x0F) * 256 + v[1]
         volt = 5 * val / 4095
         volt = round(volt * 1000)/1000
 
@@ -85,7 +86,7 @@ def decode_buf(data):
             i += 1
             continue
 
-        print(r, c, volt)
+        # print(r, c, volt)
         data["mat"][r][c] = volt
 
         # every thing goes fine
@@ -93,19 +94,33 @@ def decode_buf(data):
         if data['col'] == 16:
             data['row'] += 1
             data['col'] = 0
-        
+
         if data['row'] == 16:
             data['row'] = 0
             data['ready'] = True
             i += 2
+            data["scans"] += 1
             break
 
         i += 2
 
-    data['recv_bytes'] += i 
+    data['recv_bytes'] += i
     data['buf'] = data['buf'][i:]
 
-header = ["A"]
+
+class Timer:
+    def __init__(self, interval):
+        self.interval = interval
+        self.t = time.time()
+
+    def ok(self):
+        if time.time() - self.t > self.interval:
+            self.t = time.time()
+            return True
+        else:
+            return False
+
+
 def do_recv_raw():
     serial_port, baudrate = read_config()
     s = serial.Serial(serial_port, baudrate, timeout=0.1)
@@ -117,28 +132,33 @@ def do_recv_raw():
         "buf": b'',
         "ready": False,
         "recv_bytes": 0,
-    } 
-    
+        "scans": 0,
+    }
+
     header = [[pack('B', 65 + i).decode() for i in range(16)]]
-    # 10 hz update rate
+    tm = Timer(0.2)
     while True:
-        data['buf'] += s.read(100)
+        bf = s.read(100)
+        data['buf'] += bf
         decode_buf(data)
         if data["ready"]:
             data["ready"] = False
+
+            if not tm.ok():
+                continue
+
             tdata = header + data["mat"]
             table = AsciiTable(tdata)
             if os.name == "nt":
                 os.system("cls")
             else:
                 os.system("clear")
-            
-            print("recv bytes: ", data["recv_bytes"])
+
+            print("recv bytes: ", data["recv_bytes"], "scans: ", data["scans"])
             print(table.table)
 
 
 if __name__ == "__main__":
     # do_recv()
-
     # generate mock data
     do_recv_raw()

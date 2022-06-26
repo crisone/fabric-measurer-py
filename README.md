@@ -17,3 +17,12 @@ python3 go.py
 ```
 
 程序会持续读取串口数据，通过terminal的方式输出实时数据显示，并存储数据文件到当前目录
+
+
+## 绘制动画
+
+```bash
+python viz.py --frames 10
+```
+
+默认会找当前目录下 `data_log.txt`，生成 `pressure.mp4`，frames代表要生成动画的帧数。
